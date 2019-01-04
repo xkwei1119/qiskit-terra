@@ -5,15 +5,23 @@
 # This source code is licensed under the Apache License, Version 2.0 found in
 # the LICENSE.txt file in the root directory of this source tree.
 
-# pylint: disable=redefined-builtin
-
 """Schemas test."""
+
 import json
+import logging
 import os
-from qiskit._schema_validation import (validate_json_against_schema,
-                                       _get_validator)
-from qiskit import __path__ as qiskit_path
-from .common import QiskitTestCase
+
+from marshmallow import ValidationError
+
+from qiskit.qobj._schema_validation import (validate_json_against_schema,
+                                            _get_validator)
+from qiskit.providers.models import (BackendConfiguration, BackendProperties,
+                                     BackendStatus, JobStatus)
+from qiskit.result import Result
+from qiskit.test import QiskitTestCase, Path
+
+
+logger = logging.getLogger(__name__)
 
 
 class TestSchemaExamples(QiskitTestCase):
@@ -45,8 +53,8 @@ class TestSchemaExamples(QiskitTestCase):
     }
 
     def setUp(self):
-        self.examples_base_path = os.path.join(qiskit_path[0], 'schemas',
-                                               'examples')
+        self.examples_base_path = self._get_resource_path('examples',
+                                                          Path.SCHEMAS)
 
     def test_examples_are_valid(self):
         """Validate example json files against respective schemas"""
@@ -66,6 +74,19 @@ class TestSchemaExamples(QiskitTestCase):
 
                             validate_json_against_schema(example,
                                                          schema_name, msg)
+                        # TODO: temporary quick check for validating examples
+                        # using the qiskit.validation-based Result.
+                        try:
+                            obj_map = {'result': Result,
+                                       'backend_configuration': BackendConfiguration,
+                                       'backend_properties': BackendProperties,
+                                       'backend_status': BackendStatus,
+                                       'job_status': JobStatus}
+                            cls = obj_map.get(schema_name, None)
+                            if cls and 'openpulse' not in example_schema:
+                                _ = cls.from_dict(example)
+                        except ValidationError as ex:
+                            logger.debug(example_schema, ex)
 
     def test_schemas_are_valid(self):
         """Validate that schemas are valid jsonschema"""

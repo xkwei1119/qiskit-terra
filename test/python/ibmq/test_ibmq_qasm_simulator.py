@@ -5,16 +5,15 @@
 # This source code is licensed under the Apache License, Version 2.0 found in
 # the LICENSE.txt file in the root directory of this source tree.
 
-# pylint: disable=missing-docstring,broad-except
+# pylint: disable=missing-docstring,redefined-builtin
 
 """Test IBMQ online qasm simulator.
 TODO: Must expand tests. Re-evaluate after Aer."""
 
-from unittest import skip
 from qiskit import ClassicalRegister, QuantumCircuit, QuantumRegister
-from qiskit import transpiler
+from qiskit import compile
 from qiskit import IBMQ
-from ..common import requires_qe_access, QiskitTestCase
+from qiskit.test import requires_qe_access, QiskitTestCase
 
 
 class TestIbmqQasmSimulator(QiskitTestCase):
@@ -22,19 +21,16 @@ class TestIbmqQasmSimulator(QiskitTestCase):
 
     @requires_qe_access
     def test_execute_one_circuit_simulator_online(self, qe_token, qe_url):
-        """Test execute_one_circuit_simulator_online.
-
-        If all correct should return correct counts.
-        """
+        """Test execute_one_circuit_simulator_online."""
         IBMQ.enable_account(qe_token, qe_url)
         backend = IBMQ.get_backend('ibmq_qasm_simulator')
 
         qr = QuantumRegister(1)
         cr = ClassicalRegister(1)
-        qc = QuantumCircuit(qr, cr)
+        qc = QuantumCircuit(qr, cr, name='qc')
         qc.h(qr[0])
         qc.measure(qr[0], cr[0])
-        qobj = transpiler.compile(qc, backend, seed=73846087)
+        qobj = compile(qc, backend=backend, seed=73846087)
         shots = qobj.config.shots
         job = backend.run(qobj)
         result = job.result()
@@ -45,17 +41,14 @@ class TestIbmqQasmSimulator(QiskitTestCase):
 
     @requires_qe_access
     def test_execute_several_circuits_simulator_online(self, qe_token, qe_url):
-        """Test execute_several_circuits_simulator_online.
-
-        If all correct should return correct counts.
-        """
+        """Test execute_several_circuits_simulator_online."""
         IBMQ.enable_account(qe_token, qe_url)
         backend = IBMQ.get_backend('ibmq_qasm_simulator')
 
         qr = QuantumRegister(2)
         cr = ClassicalRegister(2)
-        qcr1 = QuantumCircuit(qr, cr)
-        qcr2 = QuantumCircuit(qr, cr)
+        qcr1 = QuantumCircuit(qr, cr, name='qc1')
+        qcr2 = QuantumCircuit(qr, cr, name='qc2')
         qcr1.h(qr)
         qcr2.h(qr[0])
         qcr2.cx(qr[0], qr[1])
@@ -64,7 +57,7 @@ class TestIbmqQasmSimulator(QiskitTestCase):
         qcr2.measure(qr[0], cr[0])
         qcr2.measure(qr[1], cr[1])
         shots = 1024
-        qobj = transpiler.compile([qcr1, qcr2], backend, seed=73846087, shots=shots)
+        qobj = compile([qcr1, qcr2], backend=backend, seed=73846087, shots=shots)
         job = backend.run(qobj)
         result = job.result()
         counts1 = result.get_counts(qcr1)
@@ -76,15 +69,9 @@ class TestIbmqQasmSimulator(QiskitTestCase):
         self.assertDictAlmostEqual(counts1, target1, threshold)
         self.assertDictAlmostEqual(counts2, target2, threshold)
 
-    # TODO: Investigate why this test is failing in master:
-    # https://github.com/Qiskit/qiskit-terra/issues/1016
-    @skip('Intermitent failure, see: https://github.com/Qiskit/qiskit-terra/issues/1016 ')
     @requires_qe_access
     def test_online_qasm_simulator_two_registers(self, qe_token, qe_url):
-        """Test online_qasm_simulator_two_registers.
-
-        If all correct should return correct counts.
-        """
+        """Test online_qasm_simulator_two_registers."""
         IBMQ.enable_account(qe_token, qe_url)
         backend = IBMQ.get_backend('ibmq_qasm_simulator')
 
@@ -92,8 +79,8 @@ class TestIbmqQasmSimulator(QiskitTestCase):
         cr1 = ClassicalRegister(2)
         qr2 = QuantumRegister(2)
         cr2 = ClassicalRegister(2)
-        qcr1 = QuantumCircuit(qr1, qr2, cr1, cr2)
-        qcr2 = QuantumCircuit(qr1, qr2, cr1, cr2)
+        qcr1 = QuantumCircuit(qr1, qr2, cr1, cr2, name="circuit1")
+        qcr2 = QuantumCircuit(qr1, qr2, cr1, cr2, name="circuit2")
         qcr1.x(qr1[0])
         qcr2.x(qr2[1])
         qcr1.measure(qr1[0], cr1[0])
@@ -105,7 +92,7 @@ class TestIbmqQasmSimulator(QiskitTestCase):
         qcr2.measure(qr2[0], cr2[0])
         qcr2.measure(qr2[1], cr2[1])
         shots = 1024
-        qobj = transpiler.compile([qcr1, qcr2], backend, seed=8458, shots=shots)
+        qobj = compile([qcr1, qcr2], backend, seed=8458, shots=shots, seed_mapper=88434)
         job = backend.run(qobj)
         result = job.result()
         result1 = result.get_counts(qcr1)
